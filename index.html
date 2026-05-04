@@ -3727,7 +3727,11 @@
 
               const valueCell = document.createElement('td');
               valueCell.className = 'process-detail-value';
-              valueCell.textContent = value;
+              let displayValue = value;
+              if (key === '净利润率' && typeof value === 'number') {
+                displayValue = (value * 100).toFixed(2) + '%';
+              }
+              valueCell.textContent = displayValue;
               tr.appendChild(valueCell);
             } else {
               // 只在有数据的列范围内添加空单元格，避免创建完全空的列
