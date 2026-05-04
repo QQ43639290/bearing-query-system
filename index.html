@@ -3728,7 +3728,11 @@
               const valueCell = document.createElement('td');
               valueCell.className = 'process-detail-value';
               let displayValue = value;
-              if (key === '净利润率' && typeof value === 'number') {
+              // 需要显示三位小数的字段列表
+              const threeDecimalFields = ['钢球价格', '纸箱价格', '磨工工价', '装配工价', '检验工价', '物流费用', '公用系统5%', '管理费用5%', '增值税费13%', '含税成本'];
+              if (threeDecimalFields.includes(key) && typeof value === 'number') {
+                displayValue = value.toFixed(3);
+              } else if (key === '净利润率' && typeof value === 'number') {
                 displayValue = (value * 100).toFixed(2) + '%';
               }
               valueCell.textContent = displayValue;
