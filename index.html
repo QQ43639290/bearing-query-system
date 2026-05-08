@@ -3731,7 +3731,7 @@
               // 需要显示一位小数的字段列表
               const oneDecimalFields = ['单箱重量/kg'];
               // 需要显示三位小数的字段列表
-              const threeDecimalFields = ['钢球价格', '纸箱价格', '包装筒价', '磨工工价', '装配工价', '检验工价', '物流费用', '公用系统5%', '管理费用5%', '增值税费13%', '含税成本'];
+              const threeDecimalFields = ['钢球价格', '纸箱价格', '包装筒价', '油脂价格', '磨工工价', '装配工价', '检验工价', '物流费用', '公用系统5%', '管理费用5%', '增值税费13%', '制造成本', '含税成本'];
               if (oneDecimalFields.includes(key) && typeof value === 'number') {
                 displayValue = value.toFixed(1);
               } else if (threeDecimalFields.includes(key) && typeof value === 'number') {
