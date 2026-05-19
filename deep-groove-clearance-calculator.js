@@ -676,22 +676,6 @@ function initDeepGrooveCalculator() {
         });
     }
 
-    // 添加原始游隙输入框的事件监听器
-    const clearanceMinEl = document.getElementById('dg_clearance_min');
-    const clearanceMaxEl = document.getElementById('dg_clearance_max');
-
-    if (clearanceMinEl) {
-        clearanceMinEl.addEventListener('change', function () {
-            updateDeepGrooveBearingParameters();
-        });
-    }
-
-    if (clearanceMaxEl) {
-        clearanceMaxEl.addEventListener('change', function () {
-            updateDeepGrooveBearingParameters();
-        });
-    }
-
     // 添加中心径和钢球直径输入框的事件监听器，当它们变化时重新计算沟径
     const centerDiameterEl = document.getElementById('dg_center_diameter');
     const ballSizeEl = document.getElementById('dg_ball_d');
