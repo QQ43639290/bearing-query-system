@@ -910,20 +910,42 @@
           const bs = parseFloat(ballSize);
           const cd = parseFloat(centerDiameter);
           if (bs > 0 && cd > 0) {
-            // 外圈：有D2查表值时反算KD
-            if (D2 && parseFloat(D2) > 0) {
-              const d2Val = parseFloat(D2);
-              const calcKd = 1 - (d2Val - cd) / bs;
-              if (calcKd >= 0.15 && calcKd <= 0.5) {
-                kdDefaultValue = calcKd.toFixed(3);
+            // 外圈：有D2查表值时反算KD（输入框只能放一个值，取第一个）
+            if (D2) {
+              const d2Str = String(D2);
+              if (d2Str.includes('/')) {
+                const parts = d2Str.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v) && v > 0);
+                if (parts.length >= 2) {
+                  const kd1 = 1 - (parts[0] - cd) / bs;
+                  if (kd1 >= 0.15 && kd1 <= 0.5) {
+                    kdDefaultValue = kd1.toFixed(3);
+                  }
+                }
+              } else if (parseFloat(D2) > 0) {
+                const d2Val = parseFloat(D2);
+                const calcKd = 1 - (d2Val - cd) / bs;
+                if (calcKd >= 0.15 && calcKd <= 0.5) {
+                  kdDefaultValue = calcKd.toFixed(3);
+                }
               }
             }
-            // 内圈：有d2查表值时反算Kd
-            if (d2 && parseFloat(d2) > 0) {
-              const d2InnerVal = parseFloat(d2);
-              const calcKdInner = 1 - (cd - d2InnerVal) / bs;
-              if (calcKdInner >= 0.15 && calcKdInner <= 0.5) {
-                kdInnerDefaultValue = calcKdInner.toFixed(3);
+            // 内圈：有d2查表值时反算Kd（输入框只能放一个值，取第一个）
+            if (d2) {
+              const d2StrInner = String(d2);
+              if (d2StrInner.includes('/')) {
+                const partsInner = d2StrInner.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v) && v > 0);
+                if (partsInner.length >= 2) {
+                  const kdInner1 = 1 - (cd - partsInner[0]) / bs;
+                  if (kdInner1 >= 0.15 && kdInner1 <= 0.5) {
+                    kdInnerDefaultValue = kdInner1.toFixed(3);
+                  }
+                }
+              } else if (parseFloat(d2) > 0) {
+                const d2InnerVal = parseFloat(d2);
+                const calcKdInner = 1 - (cd - d2InnerVal) / bs;
+                if (calcKdInner >= 0.15 && calcKdInner <= 0.5) {
+                  kdInnerDefaultValue = calcKdInner.toFixed(3);
+                }
               }
             }
           }
@@ -962,8 +984,22 @@
         }
 
         // 添加挡边直径信息（优先使用查表值）
-        if (D2) rows.push(['📐 外圈挡边D2', `${parseFloat(D2).toFixed(2)} mm`]);
-        if (d2) rows.push(['📐 内圈挡边d2', `${parseFloat(d2).toFixed(2)} mm`]);
+        if (D2) {
+          const d2Str = String(D2);
+          if (d2Str.includes('/')) {
+            rows.push(['📐 外圈挡边D2', `${d2Str} mm`]);
+          } else {
+            rows.push(['📐 外圈挡边D2', `${parseFloat(D2).toFixed(2)} mm`]);
+          }
+        }
+        if (d2) {
+          const d2Str2 = String(d2);
+          if (d2Str2.includes('/')) {
+            rows.push(['📐 内圈挡边d2', `${d2Str2} mm`]);
+          } else {
+            rows.push(['📐 内圈挡边d2', `${parseFloat(d2).toFixed(2)} mm`]);
+          }
+        }
 
         if (rmin && Trmax) rows.push(['📐 径向倒角Tr', `${rmin}～${Trmax} mm`]);
         if (rmin && Tamax) rows.push(['📐 轴向倒角Ta', `${rmin}～${Tamax} mm`]);
@@ -1479,7 +1515,7 @@
         if (moreParams.length > 0) {
           // 构建结果HTML，使用与基本参数输出结果区域相同的样式
           let resultsHtml = `<div class="result-content">
-                            <table class="result-table">
+                            <table class="result-table more-params-table">
                               <tbody>`;
 
           // 删除标题行，只显示参数数据
@@ -2003,6 +2039,16 @@
             // 有查表值，但用户手动修改了外挡系数，则使用计算值
             calculatedD2 = calculatedCenterDiameter + effectiveBallSize * (1 - kd);
             moreParams.push(['📐 外圈挡边D2', `${calculatedD2.toFixed(2)} mm (KD=${kd})`]);
+          } else if (String(D2).includes('/')) {
+            // 有查表值且为多值（如"44.20/44.78/45.20"），反算所有KD值显示
+            const parts = String(D2).split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v) && v > 0);
+            if (parts.length >= 2) {
+              // 计算所有KD值
+              const kdValues = parts.map(d2Val => (1 - (d2Val - calculatedCenterDiameter) / effectiveBallSize).toFixed(3));
+              moreParams.push(['📐 外圈挡边D2', `${String(D2)} mm (KD=${kdValues.join('/')})`]);
+              // 取第一个值用于后续重量计算
+              calculatedD2 = parts[0];
+            }
           }
         }
 
@@ -2015,6 +2061,15 @@
             // 有查表值，但用户手动修改了内挡系数，则使用计算值
             calculatedD2Inner = calculatedCenterDiameter - effectiveBallSize * (1 - kd_inner);
             moreParams.push(['📐 内圈挡边d2', `${calculatedD2Inner.toFixed(2)} mm (Kd=${kd_inner})`]);
+          } else if (String(d2).includes('/')) {
+            // 有查表值且为多值，反算所有Kd值显示
+            const partsInnerD2 = String(d2).split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v) && v > 0);
+            if (partsInnerD2.length >= 2) {
+              const kdInnerValues = partsInnerD2.map(d2Val => (1 - (calculatedCenterDiameter - d2Val) / effectiveBallSize).toFixed(3));
+              moreParams.push(['📐 内圈挡边d2', `${String(d2)} mm (Kd=${kdInnerValues.join('/')})`]);
+              // 取第一个值用于后续重量计算
+              calculatedD2Inner = partsInnerD2[0];
+            }
           }
         }
 
@@ -2060,13 +2115,19 @@
 
         // 3. 计算轴承质量（仅在挡边直径和必要参数都可用时计算）
         if (effectiveBallSize && effectiveBallCount && calculatedCenterDiameter && rmin && D2 !== null && d2 !== null) {
+          // 解析D2数值（处理"59.20/59.80"双值情况时取第一个值）
+          let d2Num = D2;
+          if (typeof D2 === 'string' && D2.includes('/')) {
+            const parts = D2.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+            d2Num = parts.length > 0 ? parts[0] : D2;
+          }
           // 计算外圈质量
           const De = calculatedCenterDiameter + effectiveBallSize;
           const Re = 0.52 * effectiveBallSize;
           const outerMass = 7.83 * (
-            0.785 * (Math.pow(D, 2) - Math.pow(D2, 2)) * B -
+            0.785 * (Math.pow(D, 2) - Math.pow(d2Num, 2)) * B -
             1.349 * D * Math.pow(rmin, 2) -
-            2.245 * Math.pow(0.5, 2) * D2 -
+            2.245 * Math.pow(0.5, 2) * d2Num -
             1.345 * De * Math.pow(Re, 2) +
             0.6176 * Math.pow(Re, 3)
           ) / 1000;
