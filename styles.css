@@ -848,6 +848,14 @@ select.more-params-input option {
   text-align: right;
   color: var(--accent-blue);
 }
+
+/* 更多参数区域表格：标签35%，值65% */
+.more-params-table .param-label {
+  width: 35%;
+}
+.more-params-table .param-value {
+  width: 65%;
+}
 .icon {
   display: inline-block;
   margin-right: 8px;
