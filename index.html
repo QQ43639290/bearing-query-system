@@ -2115,19 +2115,25 @@
 
         // 3. 计算轴承质量（仅在挡边直径和必要参数都可用时计算）
         if (effectiveBallSize && effectiveBallCount && calculatedCenterDiameter && rmin && D2 !== null && d2 !== null) {
-          // 解析D2数值（处理"59.20/59.80"双值情况时取第一个值）
-          let d2Num = D2;
+          // 解析D2数值（处理"59.20/59.80"多值情况时取第一个值）
+          let D2Num = D2;
           if (typeof D2 === 'string' && D2.includes('/')) {
-            const parts = D2.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
-            d2Num = parts.length > 0 ? parts[0] : D2;
+            const partsD2 = D2.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+            D2Num = partsD2.length > 0 ? partsD2[0] : D2;
+          }
+          // 解析d2数值（处理"44.2/45.6"多值情况时取第一个值）
+          let d2Num = d2;
+          if (typeof d2 === 'string' && d2.includes('/')) {
+            const partsd2 = d2.split('/').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+            d2Num = partsd2.length > 0 ? partsd2[0] : d2;
           }
           // 计算外圈质量
           const De = calculatedCenterDiameter + effectiveBallSize;
           const Re = 0.52 * effectiveBallSize;
           const outerMass = 7.83 * (
-            0.785 * (Math.pow(D, 2) - Math.pow(d2Num, 2)) * B -
+            0.785 * (Math.pow(D, 2) - Math.pow(D2Num, 2)) * B -
             1.349 * D * Math.pow(rmin, 2) -
-            2.245 * Math.pow(0.5, 2) * d2Num -
+            2.245 * Math.pow(0.5, 2) * D2Num -
             1.345 * De * Math.pow(Re, 2) +
             0.6176 * Math.pow(Re, 3)
           ) / 1000;
@@ -2136,8 +2142,8 @@
           const di = calculatedCenterDiameter - effectiveBallSize;
           const Ri = 0.515 * effectiveBallSize;
           const innerMass = 7.83 * (
-            0.785 * (Math.pow(d2, 2) - Math.pow(d, 2)) * B -
-            2.245 * d2 * Math.pow(0.5, 2) -
+            0.785 * (Math.pow(d2Num, 2) - Math.pow(d, 2)) * B -
+            2.245 * d2Num * Math.pow(0.5, 2) -
             1.349 * d * Math.pow(rmin, 2) -
             1.345 * di * Math.pow(Ri, 2) -
             0.6176 * Math.pow(Ri, 3)
