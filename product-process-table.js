@@ -301,17 +301,24 @@ function renderProductProcessData() {
     const cols = sheet.columns;
     let rows = sheet.data.map((r, i) => [...r, i]);
 
-    // 全局搜索（支持精确查找：以=开头时进行精确匹配）
+    // 全局搜索（支持多条件搜索，用空格或+分隔；支持精确查找：以=开头时进行精确匹配）
     const searchValue = document.getElementById('pptSearchInput').value.trim();
     if (searchValue) {
-        // 检查是否以 = 开头进行精确查找
-        if (searchValue.startsWith('=')) {
-            const exactQ = searchValue.substring(1).toLowerCase();
-            rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase() === exactQ));
-        } else {
-            const q = searchValue.toLowerCase();
-            rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase().includes(q)));
-        }
+        // 按空格或 + 分割多个搜索条件
+        const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+
+        // 依次应用每个搜索条件（AND逻辑）
+        keywords.forEach(keyword => {
+            if (keyword.startsWith('=')) {
+                // 精确匹配
+                const exactQ = keyword.substring(1).toLowerCase();
+                rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase() === exactQ));
+            } else {
+                // 模糊匹配
+                const q = keyword.toLowerCase();
+                rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase().includes(q)));
+            }
+        });
     }
 
     // 排序
