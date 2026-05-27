@@ -23,14 +23,8 @@ function createPriceRefModal() {
       </div>
       <div id="panel-sales" class="price-ref-panel active">
         <div class="price-ref-search">
-          <div class="price-ref-filter">
-            <input type="text" id="sCust" placeholder="输入客户名称">
-          </div>
-          <div class="price-ref-filter">
-            <input type="text" id="sProd" placeholder="输入产品型号">
-          </div>
-          <div class="price-ref-filter">
-            <select id="sSp"><option value="">全部销售员</option></select>
+          <div class="price-ref-filter" style="flex: 1;">
+            <input type="text" id="sSearch" placeholder="搜索客户名称、产品型号、销售员（空格或+分隔多个条件，=开头精确匹配）" oninput="applySales()" onkeydown="applySales()">
           </div>
           <div class="price-ref-btn-group">
             <button class="btn-secondary" onclick="resetSales()">⟳ 重置</button>
@@ -65,14 +59,8 @@ function createPriceRefModal() {
       </div>
       <div id="panel-purchase" class="price-ref-panel">
         <div class="price-ref-search">
-          <div class="price-ref-filter">
-            <input type="text" id="pCust" placeholder="输入供应商名称">
-          </div>
-          <div class="price-ref-filter">
-            <input type="text" id="pGoods" placeholder="输入货物名称">
-          </div>
-          <div class="price-ref-filter">
-            <input type="text" id="pSpec" placeholder="输入规格型号">
+          <div class="price-ref-filter" style="flex: 1;">
+            <input type="text" id="pSearch" placeholder="搜索供应商名称、货物名称、规格型号（空格或+分隔多个条件，=开头精确匹配）" oninput="applyPurchase()" onkeydown="applyPurchase()">
           </div>
           <div class="price-ref-btn-group">
             <button class="btn-secondary" onclick="resetPurchase()">⟳ 重置</button>
@@ -140,18 +128,46 @@ function esc(s) {
 }
 
 /**
- * 应用销售价筛选
+ * 应用销售价筛选（支持多条件搜索）
  */
 function applySales() {
-  const c = document.getElementById('sCust').value.trim().toLowerCase();
-  const p = document.getElementById('sProd').value.trim().toLowerCase();
-  const sp = document.getElementById('sSp').value;
-  fD_S = D_SALES.filter(r => {
-    if (c && !String(r['配套客户'] || '').toLowerCase().includes(c)) return false;
-    if (p && !String(r['产品型号'] || '').toLowerCase().includes(p)) return false;
-    if (sp && String(r['销售人员'] || '').trim() !== sp) return false;
-    return true;
-  });
+  console.log('applySales 函数被调用');
+
+  // 检查数据是否已加载
+  if (typeof D_SALES === 'undefined') {
+    console.error('销售数据 D_SALES 未定义');
+    return;
+  }
+
+  const searchInput = document.getElementById('sSearch');
+  if (!searchInput) {
+    console.error('未找到 sSearch 搜索框');
+    return;
+  }
+
+  const searchValue = searchInput.value.trim();
+  console.log('搜索值:', searchValue);
+
+  fD_S = [...D_SALES];
+
+  if (searchValue) {
+    const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+    keywords.forEach(keyword => {
+      const isExact = keyword.startsWith('=');
+      const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+      fD_S = fD_S.filter(r => {
+        // 遍历所有字段进行搜索
+        const values = Object.values(r).map(v => String(v || '').toLowerCase());
+        if (isExact) {
+          // 精确匹配：任意字段完全等于搜索词
+          return values.some(v => v === searchTerm);
+        } else {
+          // 模糊匹配：任意字段包含搜索词
+          return values.some(v => v.includes(searchTerm));
+        }
+      });
+    });
+  }
   if (sCol_S >= 0) doSortSales(sCol_S);
   curPage_S = 1;
   updateSalesStats(); renderSales();
@@ -212,8 +228,8 @@ function renderSales() {
   } else {
     tb.innerHTML = pd.map((r, i) => {
       const pv = parseFloat(r['单价']),
-            ps2 = isNaN(pv) ? esc(r['单价'] || '-') : '¥ ' + pv.toFixed(2),
-            sp = esc(String(r['销售人员'] || '').trim());
+        ps2 = isNaN(pv) ? esc(r['单价'] || '-') : '¥ ' + pv.toFixed(2),
+        sp = esc(String(r['销售人员'] || '').trim());
       return `<tr><td class="price-ref-cust">${esc(r['配套客户'] || '')}</td><td class="price-ref-prod">${esc(r['产品型号'] || '')}</td><td class="price-ref-price">${ps2}</td><td class="price-ref-sp"><span class="price-ref-sp-badge">${sp || '-'}</span></td><td class="price-ref-remark">${esc(r['备注'] || '')}</td></tr>`;
     }).join('');
   }
@@ -266,26 +282,54 @@ function changePS() {
  * 重置销售价筛选
  */
 function resetSales() {
-  ['sCust', 'sProd'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-  document.getElementById('sSp').value = '';
+  const searchInput = document.getElementById('sSearch');
+  if (searchInput) searchInput.value = '';
   sCol_S = -1; sAsc_S = true;
   document.querySelectorAll('#panel-sales th[data-c]').forEach(th => th.classList.remove('asc', 'desc'));
   fD_S = [...D_SALES]; curPage_S = 1; updateSalesStats(); renderSales();
 }
 
 /**
- * 应用采购价筛选
+ * 应用采购价筛选（支持多条件搜索）
  */
 function applyPurchase() {
-  const c = document.getElementById('pCust').value.trim().toLowerCase();
-  const g = document.getElementById('pGoods').value.trim().toLowerCase();
-  const spec = document.getElementById('pSpec').value.trim().toLowerCase();
-  fD_P = D_PURCH.filter(r => {
-    if (c && !String(r['销方名称'] || '').toLowerCase().includes(c)) return false;
-    if (g && !String(r['货物名称'] || '').toLowerCase().includes(g)) return false;
-    if (spec && !String(r['规格型号'] || '').toLowerCase().includes(spec)) return false;
-    return true;
-  });
+  console.log('applyPurchase 函数被调用');
+
+  // 检查数据是否已加载
+  if (typeof D_PURCH === 'undefined') {
+    console.error('采购数据 D_PURCH 未定义');
+    return;
+  }
+
+  const searchInput = document.getElementById('pSearch');
+  if (!searchInput) {
+    console.error('未找到 pSearch 搜索框');
+    return;
+  }
+
+  const searchValue = searchInput.value.trim();
+  console.log('搜索值:', searchValue);
+
+  fD_P = [...D_PURCH];
+
+  if (searchValue) {
+    const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+    keywords.forEach(keyword => {
+      const isExact = keyword.startsWith('=');
+      const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+      fD_P = fD_P.filter(r => {
+        // 遍历所有字段进行搜索
+        const values = Object.values(r).map(v => String(v || '').toLowerCase());
+        if (isExact) {
+          // 精确匹配：任意字段完全等于搜索词
+          return values.some(v => v === searchTerm);
+        } else {
+          // 模糊匹配：任意字段包含搜索词
+          return values.some(v => v.includes(searchTerm));
+        }
+      });
+    });
+  }
   if (sCol_P >= 0) doSortPurchase(sCol_P);
   curPage_P = 1; updatePurchaseStats(); renderPurchase();
 }
@@ -326,7 +370,7 @@ function renderPurchase() {
   } else {
     tb.innerHTML = pd.map((r, i) => {
       const pv = parseFloat(r['含税采购价']),
-            pvStr = isNaN(pv) ? esc(r['含税采购价'] || '-') : '¥ ' + pv.toFixed(2);
+        pvStr = isNaN(pv) ? esc(r['含税采购价'] || '-') : '¥ ' + pv.toFixed(2);
       return `<tr><td class="price-ref-supplier">${esc(r['销方名称'] || '')}</td><td class="price-ref-goods">${esc(r['货物名称'] || '')}</td><td class="price-ref-spec">${esc(r['规格型号'] || '')}</td><td class="price-ref-price">${pvStr}</td></tr>`;
     }).join('');
   }
@@ -379,7 +423,8 @@ function changePrPS() {
  * 重置采购价筛选
  */
 function resetPurchase() {
-  ['pCust', 'pGoods', 'pSpec'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const searchInput = document.getElementById('pSearch');
+  if (searchInput) searchInput.value = '';
   sCol_P = -1; sAsc_P = true;
   document.querySelectorAll('#panel-purchase th[data-c]').forEach(th => th.classList.remove('asc', 'desc'));
   fD_P = [...D_PURCH]; curPage_P = 1; updatePurchaseStats(); renderPurchase();
@@ -391,25 +436,39 @@ function resetPurchase() {
 function initPriceReference() {
   createPriceRefModal();
 
-  // 初始化销售人员下拉框
-  const spFilter = document.getElementById('sSp');
-  if (spFilter) {
-    const salespersons = ['印度客户', '吴友', '吴超', '张东华', '张瑞', '熊刚', '胡汉清', '荣超', '陈秋瑶'];
-    salespersons.forEach(sp => {
-      const option = document.createElement('option');
-      option.value = sp;
-      option.textContent = sp;
-      spFilter.appendChild(option);
-    });
+  // 初始化数据
+  if (typeof D_SALES !== 'undefined') {
+    fD_S = [...D_SALES];
+    console.log('销售数据加载成功，共', D_SALES.length, '条');
+  } else {
+    console.error('销售数据 D_SALES 未定义');
+    fD_S = [];
+  }
+  if (typeof D_PURCH !== 'undefined') {
+    fD_P = [...D_PURCH];
+    console.log('采购数据加载成功，共', D_PURCH.length, '条');
+  } else {
+    console.error('采购数据 D_PURCH 未定义');
+    fD_P = [];
   }
 
-  // 初始化数据
-  fD_S = [...D_SALES];
-  fD_P = [...D_PURCH];
-
   // 绑定事件
-  ['sCust', 'sProd', 'sSp'].forEach(id => { const e = document.getElementById(id); if (e) { e.addEventListener('input', applySales); e.addEventListener('change', applySales); } });
-  ['pCust', 'pGoods', 'pSpec'].forEach(id => { const e = document.getElementById(id); if (e) { e.addEventListener('input', applyPurchase); e.addEventListener('change', applyPurchase); } });
+  const sSearchInput = document.getElementById('sSearch');
+  if (sSearchInput) {
+    sSearchInput.addEventListener('input', applySales);
+    sSearchInput.addEventListener('change', applySales);
+    console.log('销售搜索框事件绑定成功');
+  } else {
+    console.error('未找到 sSearch 元素');
+  }
+  const pSearchInput = document.getElementById('pSearch');
+  if (pSearchInput) {
+    pSearchInput.addEventListener('input', applyPurchase);
+    pSearchInput.addEventListener('change', applyPurchase);
+    console.log('采购搜索框事件绑定成功');
+  } else {
+    console.error('未找到 pSearch 元素');
+  }
 
   // 初始渲染
   applySales();
@@ -423,7 +482,7 @@ function openPriceReference() {
   // 检查是否已经验证过密码
   if (typeof isPricePasswordVerified === 'undefined' || !isPricePasswordVerified) {
     // 显示密码输入界面
-    showPricePasswordInput(function() {
+    showPricePasswordInput(function () {
       // 密码验证成功后打开价格参考
       if (!document.getElementById('priceRefModal')) {
         initPriceReference();
