@@ -53,27 +53,12 @@
 
         <!-- 搜索表单 -->
         <div class="input-row">
-          <input type="text" id="processCustomer" placeholder="客户名称" onkeydown="handleProcessInputKey(event)"
-            oninput="handleProcessInputAutoSearch()" />
-          <input type="text" id="processModel" placeholder="产品型号" onkeydown="handleProcessInputKey(event)"
-            oninput="handleProcessInputAutoSearch()" />
-          <input type="text" id="processSalesperson" placeholder="销售人员" list="salespersonList"
+          <input type="text" id="processSearch" placeholder="搜索任意内容（空格或+分隔多个条件，=开头精确匹配）"
             onkeydown="handleProcessInputKey(event)" oninput="handleProcessInputAutoSearch()" />
           <button onclick="searchProcessData()" title="查询">
             <span class="icon">🔍</span>
           </button>
         </div>
-        <!-- 销售人员选项列表 -->
-        <datalist id="salespersonList">
-          <option value="张瑞">张瑞</option>
-          <option value="陈秋瑶">陈秋瑶</option>
-          <option value="吴超">吴超</option>
-          <option value="胡汉清">胡汉清</option>
-          <option value="吴友">吴友</option>
-          <option value="熊刚">熊刚</option>
-          <option value="张东华">张东华</option>
-          <option value="荣超">荣超</option>
-        </datalist>
 
         <!-- 操作按钮行 -->
         <div class="params-row-container">
@@ -2392,49 +2377,60 @@
         }
       }
 
-      // 搜索工艺参数数据
+      // 搜索工艺参数数据（支持多条件搜索）
       function searchProcessData() {
         try {
-          const customerInput = document.getElementById('processCustomer');
-          const modelInput = document.getElementById('processModel');
-          const salespersonInput = document.getElementById('processSalesperson');
+          const searchInput = document.getElementById('processSearch');
 
-          if (!customerInput || !modelInput || !salespersonInput) {
+          if (!searchInput) {
             console.error('找不到查询输入框');
             alert('页面元素加载不完整，请刷新页面后重试。');
             return;
           }
 
-          const customer = customerInput.value.trim();
-          const model = modelInput.value.trim();
-          const salesperson = salespersonInput.value.trim();
+          const searchValue = searchInput.value.trim();
 
-          // 如果型号输入框有内容，显示相关型号建议
-          if (model) {
+          // 如果有内容，显示相关型号建议
+          if (searchValue) {
             showModelSuggestions();
           }
 
-          // 数据过滤
-          filteredProcessData = bearingProcessData.filter(item => {
-            try {
-              const matchCustomer = !customer || (item['客户名称'] && item['客户名称'].includes(customer));
-              // 型号匹配逻辑（使用通用匹配函数）
-              const productModel = item['产品型号'] || '';
-              const modelMatched = matchModel(model, productModel);
-              const matchSalesperson = !salesperson || (item['销售人员'] && item['销售人员'].includes(salesperson));
-              return matchCustomer && modelMatched && matchSalesperson;
-            } catch (filterError) {
-              console.error('过滤数据时出错:', filterError);
-              return false;
-            }
-          });
+          // 多条件搜索：按空格或+分割，依次过滤（AND逻辑）
+          filteredProcessData = [...bearingProcessData];
+
+          if (searchValue) {
+            const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+
+            keywords.forEach(keyword => {
+              const isExact = keyword.startsWith('=');
+              const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+
+              filteredProcessData = filteredProcessData.filter(item => {
+                try {
+                  // 遍历所有字段进行搜索
+                  const values = Object.values(item).map(v => String(v || '').toLowerCase());
+
+                  if (isExact) {
+                    // 精确匹配：任意字段完全等于搜索词
+                    return values.some(v => v === searchTerm);
+                  } else {
+                    // 模糊匹配：任意字段包含搜索词
+                    return values.some(v => v.includes(searchTerm));
+                  }
+                } catch (filterError) {
+                  console.error('过滤数据时出错:', filterError);
+                  return false;
+                }
+              });
+            });
+          }
 
           currentProcessPage = 1;
           renderProcessResults();
           renderProcessPagination();
 
-          // 如果所有输入框都为空，重新显示分页控件
-          if (!customer && !model && !salesperson) {
+          // 如果输入框为空，重新显示分页控件
+          if (!searchValue) {
             const paginationElement = document.getElementById('processPagination');
             if (paginationElement) {
               paginationElement.style.display = '';
@@ -2480,10 +2476,10 @@
        */
       function showModelSuggestions() {
         try {
-          const modelInput = document.getElementById('processModel');
-          if (!modelInput) return;
+          const searchInput = document.getElementById('processSearch');
+          if (!searchInput) return;
 
-          const inputValue = modelInput.value.trim();
+          const inputValue = searchInput.value.trim();
           if (!inputValue) {
             // 如果输入为空，清除之前的建议
             const existingSuggestions = document.getElementById('modelSuggestionsContainer');
@@ -2560,9 +2556,9 @@
        * 选择型号建议
        */
       function selectModelSuggestion(model) {
-        const modelInput = document.getElementById('processModel');
-        if (modelInput) {
-          modelInput.value = model;
+        const searchInput = document.getElementById('processSearch');
+        if (searchInput) {
+          searchInput.value = model;
           // 移除建议容器
           const suggestionsContainer = document.getElementById('modelSuggestionsContainer');
           if (suggestionsContainer) {
@@ -2584,56 +2580,44 @@
           // 清除自动查询定时器，避免与游隙统计冲突
           clearTimeout(processSearchTimeout);
 
-          const modelInput = document.getElementById('processModel');
-          const customerInput = document.getElementById('processCustomer');
-          const salespersonInput = document.getElementById('processSalesperson');
+          const searchInput = document.getElementById('processSearch');
 
-          if (!modelInput || !customerInput || !salespersonInput) {
-            console.error('找不到输入框元素');
+          if (!searchInput) {
+            console.error('找不到搜索框元素');
             alert('页面元素加载不完整，请刷新页面后重试。');
             return;
           }
 
-          // 获取所有输入值
-          const model = modelInput.value.trim();
-          const customer = customerInput.value.trim();
-          const salesperson = salespersonInput.value.trim();
+          // 获取搜索值（支持多条件搜索）
+          const searchValue = searchInput.value.trim();
 
-          // 如果所有输入框都为空，提示用户至少输入一个条件
-          if (!model && !customer && !salesperson) {
-            alert('请至少输入一个查询条件：产品型号、客户名称或销售员');
+          // 如果搜索框为空，提示用户输入条件
+          if (!searchValue) {
+            alert('请至少输入一个查询条件');
             return;
           }
 
-          // 数据过滤 - 基于多条件联合筛选
-          const matchingRecords = bearingProcessData.filter(item => {
-            try {
-              // 获取产品型号、客户名称和销售员信息
-              const productModel = item['产品型号'] || '';
-              const itemCustomer = item['客户名称'] || '';
-              const itemSalesperson = item['销售人员'] || '';
+          // 数据过滤 - 基于多条件联合筛选（支持空格或+分隔）
+          let matchingRecords = [...bearingProcessData];
+          const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
-              // 所有非空条件都必须满足
-              const modelMatched = matchModel(model, productModel);
-              let matchCustomer = !customer || itemCustomer.includes(customer);
-              let matchSalesperson = !salesperson || itemSalesperson.includes(salesperson);
-
-              // 返回同时满足所有条件的结果
-              return modelMatched && matchCustomer && matchSalesperson;
-            } catch (error) {
-              console.error('过滤数据时出错:', error);
-              return false;
-            }
+          keywords.forEach(keyword => {
+            const isExact = keyword.startsWith('=');
+            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            matchingRecords = matchingRecords.filter(item => {
+              const productModel = String(item['产品型号'] || '').toLowerCase();
+              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
+              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
+              if (isExact) {
+                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
+              } else {
+                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
+              }
+            });
           });
 
           // 生成查询条件描述字符串
-          let conditionDesc = getModelConditionDesc(model);
-          if (customer) {
-            conditionDesc += conditionDesc ? `、客户名称包含"${customer}"` : `客户名称包含"${customer}"`;
-          }
-          if (salesperson) {
-            conditionDesc += conditionDesc ? `、销售员包含"${salesperson}"` : `销售员包含"${salesperson}"`;
-          }
+          const conditionDesc = `搜索条件: "${searchValue}"`;
 
           if (matchingRecords.length === 0) {
             alert(`未找到与以下条件相关的记录：${conditionDesc}`);
@@ -3036,17 +3020,31 @@
        */
           window.filterByExactModel = function (exactModel) {
             try {
-              // 获取客户名称和销售员输入框的值
-              const customer = document.getElementById('processCustomer')?.value.trim() || '';
-              const salesperson = document.getElementById('processSalesperson')?.value.trim() || '';
+              // 获取搜索框的值（支持多条件搜索）
+              const searchValue = document.getElementById('processSearch')?.value.trim() || '';
 
-              // 搜索完全匹配该型号且满足客户和销售员筛选条件的记录
-              const exactMatchingRecords = bearingProcessData.filter(item => {
-                const matchModel = item['产品型号'] && item['产品型号'] === exactModel;
-                const matchCustomer = !customer || (item['客户名称'] && item['客户名称'].includes(customer));
-                const matchSalesperson = !salesperson || (item['销售人员'] && item['销售人员'].includes(salesperson));
-                return matchModel && matchCustomer && matchSalesperson;
+              // 搜索完全匹配该型号且满足搜索条件的记录
+              let exactMatchingRecords = bearingProcessData.filter(item => {
+                return item['产品型号'] && item['产品型号'] === exactModel;
               });
+
+              // 如果有搜索条件，进一步过滤
+              if (searchValue) {
+                const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+                keywords.forEach(keyword => {
+                  const isExact = keyword.startsWith('=');
+                  const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+                  exactMatchingRecords = exactMatchingRecords.filter(item => {
+                    const customer = (item['客户名称'] || '').toLowerCase();
+                    const salesperson = (item['销售人员'] || '').toLowerCase();
+                    if (isExact) {
+                      return customer === searchTerm || salesperson === searchTerm;
+                    } else {
+                      return customer.includes(searchTerm) || salesperson.includes(searchTerm);
+                    }
+                  });
+                });
+              }
 
               if (exactMatchingRecords.length === 0) {
                 alert(`未找到型号"${exactModel}"的记录`);
@@ -4322,56 +4320,44 @@
           // 清除自动查询定时器，避免与振动统计冲突
           clearTimeout(processSearchTimeout);
 
-          const modelInput = document.getElementById('processModel');
-          const customerInput = document.getElementById('processCustomer');
-          const salespersonInput = document.getElementById('processSalesperson');
+          const searchInput = document.getElementById('processSearch');
 
-          if (!modelInput || !customerInput || !salespersonInput) {
-            console.error('找不到输入框元素');
+          if (!searchInput) {
+            console.error('找不到搜索框元素');
             alert('页面元素加载不完整，请刷新页面后重试。');
             return;
           }
 
-          // 获取所有输入值
-          const model = modelInput.value.trim();
-          const customer = customerInput.value.trim();
-          const salesperson = salespersonInput.value.trim();
+          // 获取搜索值（支持多条件搜索）
+          const searchValue = searchInput.value.trim();
 
-          // 如果所有输入框都为空，提示用户至少输入一个条件
-          if (!model && !customer && !salesperson) {
-            alert('请至少输入一个查询条件：产品型号、客户名称或销售员');
+          // 如果搜索框为空，提示用户输入条件
+          if (!searchValue) {
+            alert('请至少输入一个查询条件');
             return;
           }
 
-          // 数据过滤 - 基于多条件联合筛选
-          const matchingRecords = bearingProcessData.filter(item => {
-            try {
-              // 获取产品型号、客户名称和销售员信息
-              const productModel = item['产品型号'] || '';
-              const itemCustomer = item['客户名称'] || '';
-              const itemSalesperson = item['销售人员'] || '';
+          // 数据过滤 - 基于多条件联合筛选（支持空格或+分隔）
+          let matchingRecords = [...bearingProcessData];
+          const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
-              // 所有非空条件都必须满足
-              const modelMatched = matchModel(model, productModel);
-              let matchCustomer = !customer || itemCustomer.includes(customer);
-              let matchSalesperson = !salesperson || itemSalesperson.includes(salesperson);
-
-              // 返回同时满足所有条件的结果
-              return modelMatched && matchCustomer && matchSalesperson;
-            } catch (error) {
-              console.error('过滤数据时出错:', error);
-              return false;
-            }
+          keywords.forEach(keyword => {
+            const isExact = keyword.startsWith('=');
+            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            matchingRecords = matchingRecords.filter(item => {
+              const productModel = String(item['产品型号'] || '').toLowerCase();
+              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
+              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
+              if (isExact) {
+                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
+              } else {
+                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
+              }
+            });
           });
 
           // 生成查询条件描述字符串
-          let conditionDesc = getModelConditionDesc(model);
-          if (customer) {
-            conditionDesc += conditionDesc ? `、客户名称包含"${customer}"` : `客户名称包含"${customer}"`;
-          }
-          if (salesperson) {
-            conditionDesc += conditionDesc ? `、销售员包含"${salesperson}"` : `销售员包含"${salesperson}"`;
-          }
+          const conditionDesc = `搜索条件: "${searchValue}"`;
 
           if (matchingRecords.length === 0) {
             alert(`未找到与以下条件相关的记录：${conditionDesc}`);
@@ -4669,17 +4655,31 @@
            */
           window.filterByExactModelForVibration = function (exactModel) {
             try {
-              // 获取客户名称和销售员输入框的值
-              const customer = document.getElementById('processCustomer')?.value.trim() || '';
-              const salesperson = document.getElementById('processSalesperson')?.value.trim() || '';
+              // 获取搜索框的值（支持多条件搜索）
+              const searchValue = document.getElementById('processSearch')?.value.trim() || '';
 
-              // 搜索完全匹配该型号且满足客户和销售员筛选条件的记录
-              const exactMatchingRecords = bearingProcessData.filter(item => {
-                const matchModel = item['产品型号'] && item['产品型号'] === exactModel;
-                const matchCustomer = !customer || (item['客户名称'] && item['客户名称'].includes(customer));
-                const matchSalesperson = !salesperson || (item['销售人员'] && item['销售人员'].includes(salesperson));
-                return matchModel && matchCustomer && matchSalesperson;
+              // 搜索完全匹配该型号且满足搜索条件的记录
+              let exactMatchingRecords = bearingProcessData.filter(item => {
+                return item['产品型号'] && item['产品型号'] === exactModel;
               });
+
+              // 如果有搜索条件，进一步过滤
+              if (searchValue) {
+                const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+                keywords.forEach(keyword => {
+                  const isExact = keyword.startsWith('=');
+                  const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+                  exactMatchingRecords = exactMatchingRecords.filter(item => {
+                    const customer = (item['客户名称'] || '').toLowerCase();
+                    const salesperson = (item['销售人员'] || '').toLowerCase();
+                    if (isExact) {
+                      return customer === searchTerm || salesperson === searchTerm;
+                    } else {
+                      return customer.includes(searchTerm) || salesperson.includes(searchTerm);
+                    }
+                  });
+                });
+              }
 
               if (exactMatchingRecords.length === 0) {
                 alert(`未找到型号"${exactModel}"的记录`);
@@ -4941,56 +4941,44 @@
           // 清除自动查询定时器，避免与含税售价统计冲突
           clearTimeout(processSearchTimeout);
 
-          const modelInput = document.getElementById('processModel');
-          const customerInput = document.getElementById('processCustomer');
-          const salespersonInput = document.getElementById('processSalesperson');
+          const searchInput = document.getElementById('processSearch');
 
-          if (!modelInput || !customerInput || !salespersonInput) {
-            console.error('找不到输入框元素');
+          if (!searchInput) {
+            console.error('找不到搜索框元素');
             alert('页面元素加载不完整，请刷新页面后重试。');
             return;
           }
 
-          // 获取所有输入值
-          const model = modelInput.value.trim();
-          const customer = customerInput.value.trim();
-          const salesperson = salespersonInput.value.trim();
+          // 获取搜索值（支持多条件搜索）
+          const searchValue = searchInput.value.trim();
 
-          // 如果所有输入框都为空，提示用户至少输入一个条件
-          if (!model && !customer && !salesperson) {
+          // 如果搜索框为空，提示用户输入条件
+          if (!searchValue) {
             alert('请至少输入一个查询条件：产品型号、客户名称或销售员');
             return;
           }
 
-          // 数据过滤 - 基于多条件联合筛选
-          const matchingRecords = bearingProcessData.filter(item => {
-            try {
-              // 获取产品型号、客户名称和销售员信息
-              const productModel = item['产品型号'] || '';
-              const itemCustomer = item['客户名称'] || '';
-              const itemSalesperson = item['销售人员'] || '';
+          // 数据过滤 - 基于多条件联合筛选（支持空格或+分隔）
+          let matchingRecords = [...bearingProcessData];
+          const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
-              // 所有非空条件都必须满足
-              const modelMatched = matchModel(model, productModel);
-              let matchCustomer = !customer || itemCustomer.includes(customer);
-              let matchSalesperson = !salesperson || itemSalesperson.includes(salesperson);
-
-              // 返回同时满足所有条件的结果
-              return modelMatched && matchCustomer && matchSalesperson;
-            } catch (error) {
-              console.error('过滤数据时出错:', error);
-              return false;
-            }
+          keywords.forEach(keyword => {
+            const isExact = keyword.startsWith('=');
+            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            matchingRecords = matchingRecords.filter(item => {
+              const productModel = String(item['产品型号'] || '').toLowerCase();
+              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
+              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
+              if (isExact) {
+                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
+              } else {
+                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
+              }
+            });
           });
 
           // 生成查询条件描述字符串
-          let conditionDesc = getModelConditionDesc(model);
-          if (customer) {
-            conditionDesc += conditionDesc ? `、客户名称包含"${customer}"` : `客户名称包含"${customer}"`;
-          }
-          if (salesperson) {
-            conditionDesc += conditionDesc ? `、销售员包含"${salesperson}"` : `销售员包含"${salesperson}"`;
-          }
+          const conditionDesc = `搜索条件: "${searchValue}"`;
 
           if (matchingRecords.length === 0) {
             alert(`未找到与以下条件相关的记录：${conditionDesc}`);
@@ -5249,17 +5237,31 @@
            */
           window.filterByExactModelForPrice = function (exactModel) {
             try {
-              // 获取客户名称和销售员输入框的值
-              const customer = document.getElementById('processCustomer')?.value.trim() || '';
-              const salesperson = document.getElementById('processSalesperson')?.value.trim() || '';
+              // 获取搜索框的值（支持多条件搜索）
+              const searchValue = document.getElementById('processSearch')?.value.trim() || '';
 
-              // 搜索完全匹配该型号且满足客户和销售员筛选条件的记录
-              const exactMatchingRecords = bearingProcessData.filter(item => {
-                const matchModel = item['产品型号'] && item['产品型号'] === exactModel;
-                const matchCustomer = !customer || (item['客户名称'] && item['客户名称'].includes(customer));
-                const matchSalesperson = !salesperson || (item['销售人员'] && item['销售人员'].includes(salesperson));
-                return matchModel && matchCustomer && matchSalesperson;
+              // 搜索完全匹配该型号且满足搜索条件的记录
+              let exactMatchingRecords = bearingProcessData.filter(item => {
+                return item['产品型号'] && item['产品型号'] === exactModel;
               });
+
+              // 如果有搜索条件，进一步过滤
+              if (searchValue) {
+                const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
+                keywords.forEach(keyword => {
+                  const isExact = keyword.startsWith('=');
+                  const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+                  exactMatchingRecords = exactMatchingRecords.filter(item => {
+                    const customer = (item['客户名称'] || '').toLowerCase();
+                    const salesperson = (item['销售人员'] || '').toLowerCase();
+                    if (isExact) {
+                      return customer === searchTerm || salesperson === searchTerm;
+                    } else {
+                      return customer.includes(searchTerm) || salesperson.includes(searchTerm);
+                    }
+                  });
+                });
+              }
 
               if (exactMatchingRecords.length === 0) {
                 alert(`未找到型号"${exactModel}"的记录`);
