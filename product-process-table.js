@@ -57,10 +57,9 @@ function createProductProcessModal() {
 
       <!-- 搜索和筛选区 -->
       <div style="padding: 12px; background: var(--bg-light); border-bottom: 1px solid var(--border-dark); flex-shrink: 0;">
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: nowrap;">
           <input type="text" id="pptSearchInput" placeholder="搜索型号、客户、尺寸..." style="
             flex: 1;
-            min-width: 200px;
             padding: 10px 14px;
             border: 1px solid var(--border-dark);
             border-radius: 8px;
@@ -68,6 +67,7 @@ function createProductProcessModal() {
             color: var(--text-light);
             font-size: 14px;
             outline: none;
+            min-width: 0;
           ">
           <select id="pptSheetSelect" style="
             padding: 10px 30px 10px 14px;
@@ -82,10 +82,11 @@ function createProductProcessModal() {
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 10px center;
-            min-width: 150px;
+            min-width: 120px;
+            flex-shrink: 0;
           ">
           </select>
-          <span id="pptResultCount" style="color: var(--text-muted); font-size: 13px; white-space: nowrap;"></span>
+          <span id="pptResultCount" style="color: var(--text-muted); font-size: 13px; white-space: nowrap; flex-shrink: 0;"></span>
         </div>
       </div>
 
@@ -300,10 +301,17 @@ function renderProductProcessData() {
     const cols = sheet.columns;
     let rows = sheet.data.map((r, i) => [...r, i]);
 
-    // 全局搜索
-    const q = document.getElementById('pptSearchInput').value.trim().toLowerCase();
-    if (q) {
-        rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase().includes(q)));
+    // 全局搜索（支持精确查找：以=开头时进行精确匹配）
+    const searchValue = document.getElementById('pptSearchInput').value.trim();
+    if (searchValue) {
+        // 检查是否以 = 开头进行精确查找
+        if (searchValue.startsWith('=')) {
+            const exactQ = searchValue.substring(1).toLowerCase();
+            rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase() === exactQ));
+        } else {
+            const q = searchValue.toLowerCase();
+            rows = rows.filter(r => r.slice(0, -1).some(c => String(c).toLowerCase().includes(q)));
+        }
     }
 
     // 排序
