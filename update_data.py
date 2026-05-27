@@ -39,9 +39,34 @@ def get_excel_path():
     return DEFAULT_EXCEL
 
 
+def format_decimal_value(value):
+    """格式化数值，最多保留四位小数"""
+    try:
+        if value == '' or value is None:
+            return ''
+        num = float(value)
+        # 四舍五入到四位小数
+        rounded = round(num, 4)
+        # 如果是整数则返回整数
+        if rounded == int(rounded):
+            return int(rounded)
+        return rounded
+    except:
+        return value
+
+
 def read_excel_data(excel_path):
     """读取Excel所有工作表数据"""
     print(f"正在读取: {excel_path}")
+    
+    # 需要格式化为最多四位小数的列
+    decimal_columns = [
+        '油脂价格', '包装筒价', '纸箱价格', '物流费用',
+        '公用系统5%', '管理费用5%', '增值税费13%',
+        '制造成本', '外协成本', '含税成本', '净利润率',
+        '钢球质量/g', '每吨价格', '润滑脂价格/g',
+        '外径尺寸', '内径尺寸'
+    ]
     
     xls = pd.ExcelFile(excel_path)
     print(f"工作表数量: {len(xls.sheet_names)}")
@@ -60,13 +85,18 @@ def read_excel_data(excel_path):
         clean_rows = []
         for row in rows:
             clean_row = []
-            for cell in row:
+            for idx, cell in enumerate(row):
                 if hasattr(cell, 'item'):
-                    clean_row.append(cell.item())
+                    cell = cell.item()
                 elif cell != cell:  # NaN检查
-                    clean_row.append('')
-                else:
-                    clean_row.append(cell)
+                    cell = ''
+                
+                # 对需要格式化的列进行处理
+                col_name = columns[idx] if idx < len(columns) else ''
+                if col_name in decimal_columns and cell != '':
+                    cell = format_decimal_value(cell)
+                
+                clean_row.append(cell)
             clean_rows.append(clean_row)
         
         data[sheet_name] = {
@@ -109,6 +139,30 @@ def generate_process_records(excel_path):
         '毛坯型号', '包装筒', '密封价格', '查询数据编号',
         '外径', '宽度'
     ]
+    
+    # 需要格式化为最多四位小数的列
+    decimal_columns = [
+        '油脂价格', '包装筒价', '纸箱价格', '物流费用',
+        '公用系统5%', '管理费用5%', '增值税费13%',
+        '制造成本', '外协成本', '含税成本', '净利润率',
+        '钢球质量/g', '每吨价格', '润滑脂价格/g',
+        '外径尺寸', '内径尺寸'
+    ]
+    
+    def format_decimal(value):
+        """格式化数值，最多保留四位小数"""
+        try:
+            if pd.isna(value) or value == '':
+                return ''
+            num = float(value)
+            # 四舍五入到四位小数
+            rounded = round(num, 4)
+            # 如果是整数则返回整数
+            if rounded == int(rounded):
+                return int(rounded)
+            return rounded
+        except:
+            return value
     
     # 将 DataFrame 转换为字典列表
     records = []
@@ -155,6 +209,11 @@ def generate_process_records(excel_path):
                     value = value.item()
                 elif pd.isna(value):
                     value = ''
+                
+                # 对需要格式化的列进行处理
+                if col in decimal_columns and value != '':
+                    value = format_decimal(value)
+                
                 record[col] = value
         
         records.append(record)
