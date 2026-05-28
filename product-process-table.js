@@ -2,14 +2,25 @@
 // 功能：显示和管理产品工艺数据
 
 function openProductProcessTable() {
-    // 检查是否已存在模态框
-    let modal = document.getElementById('productProcessModal');
-    if (!modal) {
-        createProductProcessModal();
-        modal = document.getElementById('productProcessModal');
+    // 检查是否已经验证过密码
+    if (typeof isPricePasswordVerified === 'undefined' || !isPricePasswordVerified) {
+        // 显示密码输入界面
+        showPricePasswordInput(function () {
+            // 密码验证成功后打开产品工艺基础数据表
+            if (!document.getElementById('productProcessModal')) {
+                createProductProcessModal();
+            }
+            document.getElementById('productProcessModal').style.display = 'flex';
+            initializeProductProcessTable();
+        });
+    } else {
+        // 密码已经验证过，直接打开
+        if (!document.getElementById('productProcessModal')) {
+            createProductProcessModal();
+        }
+        document.getElementById('productProcessModal').style.display = 'flex';
+        initializeProductProcessTable();
     }
-    modal.style.display = 'flex';
-    initializeProductProcessTable();
 }
 
 function closeProductProcessModal() {
