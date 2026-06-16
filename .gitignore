@@ -1,0 +1,10 @@
+# 忽略 Trae IDE 配置文件夹
+.trae/
+
+# 可以添加其他常见的忽略项
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+dist/
+build/
