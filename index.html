@@ -3697,7 +3697,7 @@
       }
 
       // 创建详情表格的辅助函数
-      function createDetailTable(item, fields, tableId) {
+      function createDetailTable(item, fields, tableId, hiddenFields = []) {
         const table = document.createElement('table');
         table.id = tableId;
         table.className = 'process-detail-table';
@@ -3706,11 +3706,16 @@
         table.style.borderSpacing = '0';
         table.style.marginTop = '0';
 
-        // 过滤掉空值项，并只保留指定字段
+        // 过滤掉空值项，并只保留指定字段，同时排除隐藏字段
         const validEntries = Object.entries(item)
           .filter(([key, value]) => {
             // 基本过滤条件：字段必须在指定列表中，且值不为空、"-"、"/"
             if (!fields.includes(key) || !value || value === '-' || value === '/') {
+              return false;
+            }
+
+            // 如果字段在隐藏列表中，跳过
+            if (hiddenFields.includes(key)) {
               return false;
             }
 
@@ -3786,14 +3791,19 @@
 
             if (entryIndex < validEntries.length) {
               const [key, value] = validEntries[entryIndex];
+              const entryId = `entry-${entryIndex}`;
 
               const keyCell = document.createElement('td');
               keyCell.className = 'process-detail-key';
               keyCell.textContent = key;
+              keyCell.dataset.field = key;
+              keyCell.dataset.entryId = entryId;
               tr.appendChild(keyCell);
 
               const valueCell = document.createElement('td');
               valueCell.className = 'process-detail-value';
+              valueCell.dataset.field = key;
+              valueCell.dataset.entryId = entryId;
               let displayValue = value;
               // 需要显示一位小数的字段列表
               const oneDecimalFields = ['单箱重量/kg'];
@@ -3937,6 +3947,49 @@
             }
           });
 
+          // 精简按钮
+          const simplifiedFields = ['客户名称', '客户件号', '径向游隙', '销售人员', '物流方向', '包装筒数', '纸箱尺寸', '单箱数量', '单箱重量/kg', '特殊要求'];
+          const simplifyBtn = document.createElement('button');
+          simplifyBtn.textContent = '精简';
+          simplifyBtn.style.cursor = 'pointer';
+          simplifyBtn.style.padding = '6px 14px';
+          simplifyBtn.style.marginRight = '10px';
+          simplifyBtn.style.border = '1px solid var(--border-dark, #333)';
+          simplifyBtn.style.borderRadius = '6px';
+          simplifyBtn.style.backgroundColor = 'var(--bg-light, #444)';
+          simplifyBtn.style.color = 'var(--text-light, #e4e6eb)';
+          simplifyBtn.style.fontSize = '0.9rem';
+          simplifyBtn.style.transition = 'all 0.2s ease';
+
+          let isSimplified = false;
+          simplifyBtn.addEventListener('click', function () {
+            isSimplified = !isSimplified;
+
+            // 重新渲染工艺参数表格
+            const tableContainer = detailDiv.querySelector('.processTableContainer');
+            if (tableContainer) {
+              const itemData = JSON.parse(tableContainer.dataset.item || '{}');
+              const fields = JSON.parse(tableContainer.dataset.fields || '[]');
+              const hiddenFields = isSimplified ? simplifiedFields : [];
+
+              // 清空容器并重新创建表格
+              tableContainer.innerHTML = '';
+              const newTable = createDetailTable(itemData, fields, 'process-params-table', hiddenFields);
+              tableContainer.appendChild(newTable);
+            }
+
+            simplifyBtn.textContent = isSimplified ? '完整' : '精简';
+            if (isSimplified) {
+              simplifyBtn.style.backgroundColor = '#00a8ff';
+              simplifyBtn.style.color = '#ffffff';
+              simplifyBtn.style.borderColor = '#00a8ff';
+            } else {
+              simplifyBtn.style.backgroundColor = 'transparent';
+              simplifyBtn.style.color = '#ffffff';
+              simplifyBtn.style.borderColor = '#ffffff';
+            }
+          });
+
           titleContainer.appendChild(title);
           titleContainer.appendChild(closeIcon);
           detailDiv.appendChild(titleContainer);
@@ -3954,17 +4007,21 @@
 
           // 创建工艺参数区域容器
           const processContainer = document.createElement('div');
+          processContainer.className = 'processContainer';
           processContainer.style.marginBottom = '20px';
 
           // 创建工艺参数表格容器
           const processTableContainer = document.createElement('div');
+          processTableContainer.className = 'processTableContainer';
           processTableContainer.style.overflowX = 'auto';
           processTableContainer.style.borderRadius = '8px';
           processTableContainer.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
           processTableContainer.style.marginBottom = '20px';
+          processTableContainer.dataset.item = JSON.stringify(item);
+          processTableContainer.dataset.fields = JSON.stringify(processFields);
 
-          // 创建工艺参数表格
-          const processTable = createDetailTable(item, processFields, 'process-params-table');
+          // 创建工艺参数表格（默认显示完整状态）
+          const processTable = createDetailTable(item, processFields, 'process-params-table', []);
           processTableContainer.appendChild(processTable);
           processContainer.appendChild(processTableContainer);
           detailDiv.appendChild(processContainer);
@@ -4071,8 +4128,9 @@
           const buttonContainer = document.createElement('div');
           buttonContainer.style.display = 'flex';
           buttonContainer.style.justifyContent = 'center';
+          buttonContainer.style.alignItems = 'center';
+          buttonContainer.style.gap = '15px';
           buttonContainer.style.marginTop = '5px';
-          // 增加底部外边距确保按钮完全显示
           buttonContainer.style.marginBottom = '20px';
 
           // 添加关闭按钮
@@ -4091,6 +4149,19 @@
           closeBtn.style.transition = 'all 0.3s ease';
           closeBtn.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.1)';
 
+          // 精简按钮样式（调整为与关闭按钮一致）
+          simplifyBtn.style.padding = '10px 25px';
+          simplifyBtn.style.backgroundColor = 'transparent';
+          simplifyBtn.style.color = '#ffffff';
+          simplifyBtn.style.border = '1px solid #ffffff';
+          simplifyBtn.style.cursor = 'pointer';
+          simplifyBtn.style.fontWeight = '600';
+          simplifyBtn.style.fontSize = '1rem';
+          simplifyBtn.style.fontFamily = "'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif";
+          simplifyBtn.style.letterSpacing = '0.3px';
+          simplifyBtn.style.transition = 'all 0.3s ease';
+          simplifyBtn.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.1)';
+
           closeBtn.addEventListener('click', function () {
             try {
               document.body.removeChild(detailDiv);
@@ -4103,6 +4174,7 @@
             }
           });
 
+          buttonContainer.appendChild(simplifyBtn);
           buttonContainer.appendChild(closeBtn);
           detailDiv.appendChild(buttonContainer);
 
