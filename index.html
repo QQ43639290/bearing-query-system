@@ -3197,10 +3197,10 @@
               const headerRow = document.createElement('tr');
 
               // 根据屏幕宽度决定列数
-              let headers = ['客户名称', '产品型号'];
+              let headers = ['客户名称', '产品编号'];
               if (isDesktop) {
-                // 电脑界面显示4列，每行显示两个客户名称和两个产品型号
-                headers = ['客户名称', '产品型号', '客户名称', '产品型号'];
+                // 电脑界面显示4列，每行显示两个客户名称和两个产品编号
+                headers = ['客户名称', '产品编号', '客户名称', '产品编号'];
               }
               headers.forEach(headerText => {
                 const th = document.createElement('th');
@@ -3241,7 +3241,7 @@
                   tr.appendChild(customerCell);
 
                   const modelCell = document.createElement('td');
-                  modelCell.textContent = item['产品型号'] || '-';
+                  modelCell.textContent = item['产品编号'] || '-';
                   setTableCellStyle(modelCell, maxWidth);
                   tr.appendChild(modelCell);
 
@@ -3286,7 +3286,7 @@
                     tr.appendChild(customerCell);
 
                     const modelCell = document.createElement('td');
-                    modelCell.textContent = (item && item['产品型号']) || '-';
+                    modelCell.textContent = (item && item['产品编号']) || '-';
                     setTableCellStyle(modelCell, '150px');
                     tr.appendChild(modelCell);
 
@@ -3480,10 +3480,10 @@
           const headerRow = document.createElement('tr');
 
           // 根据屏幕宽度决定列数
-          let headers = ['客户名称', '产品型号'];
+          let headers = ['客户名称', '产品编号'];
           if (isDesktop) {
-            // 桌面端显示4列，每行显示两个客户名称和两个产品型号
-            headers = ['客户名称', '产品型号', '客户名称', '产品型号'];
+            // 桌面端显示4列，每行显示两个客户名称和两个产品编号
+            headers = ['客户名称', '产品编号', '客户名称', '产品编号'];
           }
           headers.forEach(headerText => {
             const th = document.createElement('th');
@@ -3520,10 +3520,10 @@
                 customerDiv.textContent = (item && item['客户名称']) || '-';
                 card.appendChild(customerDiv);
 
-                // 第二行：产品型号 - 白色字体
+                // 第二行：产品编号 - 白色字体
                 const modelDiv = document.createElement('div');
                 modelDiv.className = 'card-model';
-                modelDiv.textContent = (item && item['产品型号']) || '-';
+                modelDiv.textContent = (item && item['产品编号']) || '-';
                 card.appendChild(modelDiv);
 
                 // 第三行：特殊要求 - 灰色字体，字号小于其他文本，颜色更淡
@@ -3617,7 +3617,7 @@
                   tr.appendChild(customerCell1);
 
                   const modelCell1 = document.createElement('td');
-                  modelCell1.textContent = item1['产品型号'] || '-';
+                  modelCell1.textContent = item1['产品编号'] || '-';
                   modelCell1.style.maxWidth = '120px';
                   tr.appendChild(modelCell1);
 
@@ -3652,7 +3652,7 @@
                   tr.appendChild(customerCell2);
 
                   const modelCell2 = document.createElement('td');
-                  modelCell2.textContent = item2['产品型号'] || '-';
+                  modelCell2.textContent = item2['产品编号'] || '-';
                   modelCell2.style.maxWidth = '120px';
                   tr.appendChild(modelCell2);
 
@@ -3795,7 +3795,16 @@
 
               const keyCell = document.createElement('td');
               keyCell.className = 'process-detail-key';
-              keyCell.textContent = key;
+              // 包装筒为"无筒直装"时，替换相关标签
+              let displayKey = key;
+              if (item['包装筒'] === '无筒直装') {
+                if (key === '单筒数量') {
+                  displayKey = '单列数量';
+                } else if (key === '包装筒数') {
+                  displayKey = '包装列数';
+                }
+              }
+              keyCell.textContent = displayKey;
               keyCell.dataset.field = key;
               keyCell.dataset.entryId = entryId;
               tr.appendChild(keyCell);
