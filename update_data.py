@@ -12,7 +12,7 @@
 
 示例:
   python3 update_data.py                                    # 使用默认路径
-  python3 update_data.py /path/to/产品工艺管理.xlsx         # 指定Excel文件
+  python3 update_data.py /path/to/0-产品工艺管理.xlsx         # 指定Excel文件
 """
 
 import pandas as pd
@@ -24,7 +24,7 @@ from datetime import datetime
 
 # ============ 配置 ============
 # 默认Excel文件路径（修改为您的实际路径）
-DEFAULT_EXCEL = '产品工艺管理.xlsx'
+DEFAULT_EXCEL = '0-产品工艺管理.xlsx'
 # 输出的data.js路径
 DATA_JS_PATH = 'Basic product process data.js'
 # bearing-data.js路径
@@ -115,7 +115,7 @@ def generate_data_js(data, sheet_count, total_records):
     """生成data.js文件"""
     data_json = json.dumps(data, ensure_ascii=False, default=str, indent=2)
     
-    content = f"""// 产品工艺管理数据
+    content = f"""// 0-产品工艺管理数据
 // 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 // 工作表数量: {sheet_count}
 // 总记录数: {total_records}
