@@ -240,9 +240,11 @@ def update_bearing_data_js(records, bearing_data_js_path):
     # 检查是否存在这个键
     if re.search(pattern, content):
         # 替换数据
+        # 注意：必须使用lambda作为替换函数，否则re.sub会解析data_json中的
+        # 转义序列（如\n、\"），导致生成的JS文件出现语法错误
         new_content = re.sub(
             pattern,
-            'bearingProcessData: ' + data_json,
+            lambda m: 'bearingProcessData: ' + data_json,
             content
         )
     else:

@@ -3804,6 +3804,15 @@
                   displayKey = '包装列数';
                 }
               }
+              // 径向游隙标签根据内容调整：
+              // 含"；"表示同时包含径向和轴向游隙；仅含"E"或"a"表示轴向游隙
+              if (key === '径向游隙' && typeof value === 'string' && value) {
+                if (value.includes('；')) {
+                  displayKey = '径向+轴向游隙';
+                } else if (value.includes('E') || value.includes('a')) {
+                  displayKey = '轴向游隙';
+                }
+              }
               keyCell.textContent = displayKey;
               keyCell.dataset.field = key;
               keyCell.dataset.entryId = entryId;
@@ -3851,6 +3860,101 @@
         }
 
         table.appendChild(tbody);
+
+        // ===== 列宽手动拖拽调整功能 =====
+        const totalCols = columnCount * 2; // 每组为键、值两列
+        const colGroup = document.createElement('colgroup');
+        const colEls = [];
+        for (let i = 0; i < totalCols; i++) {
+          const col = document.createElement('col');
+          colGroup.appendChild(col);
+          colEls.push(col);
+        }
+        table.insertBefore(colGroup, table.firstChild);
+
+        let widthsInitialized = false;
+        let resizeState = null;
+        const EDGE_ZONE = 6; // 边框感应区域宽度（像素）
+        const MIN_COL_WIDTH = 100; // 列最小宽度（像素）
+
+        // 给所有单元格设置最小宽度，使初始自动布局（table-layout: auto）的
+        // 默认列宽也不低于 MIN_COL_WIDTH，而不只是拖动时才受限
+        for (const row of tbody.rows) {
+          for (const cell of row.cells) {
+            cell.style.minWidth = MIN_COL_WIDTH + 'px';
+          }
+        }
+
+        // 首次拖动时，将当前自动布局的列宽固定为像素值
+        function initColumnWidths() {
+          const widths = new Array(totalCols).fill(0);
+          for (const row of tbody.rows) {
+            for (let i = 0; i < row.cells.length && i < totalCols; i++) {
+              const w = row.cells[i].getBoundingClientRect().width;
+              if (w > widths[i]) widths[i] = w;
+            }
+          }
+          if (widths.some(w => !w)) return false;
+          colEls.forEach((col, i) => {
+            col.style.width = widths[i] + 'px';
+          });
+          table.style.tableLayout = 'fixed';
+          widthsInitialized = true;
+          return true;
+        }
+
+        // 悬停检测：靠近列边界时显示调整光标；拖拽中调整列宽
+        table.addEventListener('pointermove', (e) => {
+          if (resizeState) {
+            const total = resizeState.leftW + resizeState.rightW;
+            const dx = e.clientX - resizeState.startX;
+            const newLeft = Math.min(Math.max(resizeState.leftW + dx, MIN_COL_WIDTH), total - MIN_COL_WIDTH);
+            colEls[resizeState.colIndex].style.width = newLeft + 'px';
+            colEls[resizeState.colIndex + 1].style.width = (total - newLeft) + 'px';
+            return;
+          }
+          const cell = e.target.closest('td');
+          if (!cell || cell.cellIndex >= totalCols - 1) {
+            table.style.cursor = '';
+            return;
+          }
+          const rect = cell.getBoundingClientRect();
+          table.style.cursor = (rect.right - e.clientX) <= EDGE_ZONE ? 'col-resize' : '';
+        });
+
+        // 在列边界按下鼠标开始拖拽
+        table.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          const cell = e.target.closest('td');
+          if (!cell || cell.cellIndex >= totalCols - 1) return;
+          const rect = cell.getBoundingClientRect();
+          if ((rect.right - e.clientX) > EDGE_ZONE) return;
+          e.preventDefault();
+          if (!widthsInitialized && !initColumnWidths()) return;
+          resizeState = {
+            startX: e.clientX,
+            colIndex: cell.cellIndex,
+            leftW: parseFloat(colEls[cell.cellIndex].style.width),
+            rightW: parseFloat(colEls[cell.cellIndex + 1].style.width)
+          };
+          table.style.cursor = 'col-resize';
+          table.setPointerCapture(e.pointerId);
+        });
+
+        // 松开鼠标结束拖拽
+        table.addEventListener('pointerup', () => {
+          if (resizeState) {
+            resizeState = null;
+            table.style.cursor = '';
+          }
+        });
+        table.addEventListener('pointercancel', () => {
+          if (resizeState) {
+            resizeState = null;
+            table.style.cursor = '';
+          }
+        });
+
         return table;
       }
 
