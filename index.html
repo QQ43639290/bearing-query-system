@@ -53,7 +53,7 @@
 
         <!-- 搜索表单 -->
         <div class="input-row">
-          <input type="text" id="processSearch" placeholder="搜索任意内容（空格或+分隔多个条件，=开头精确匹配）"
+          <input type="text" id="processSearch" placeholder="搜索（空格/+分隔多条件，=精确匹配，-排除关键词）"
             onkeydown="handleProcessInputKey(event)" oninput="handleProcessInputAutoSearch()" />
           <button onclick="searchProcessData()" title="查询">
             <span class="icon">🔍</span>
@@ -2390,11 +2390,6 @@
 
           const searchValue = searchInput.value.trim();
 
-          // 如果有内容，显示相关型号建议
-          if (searchValue) {
-            showModelSuggestions();
-          }
-
           // 多条件搜索：按空格或+分割，依次过滤（AND逻辑）
           filteredProcessData = [...bearingProcessData];
 
@@ -2402,27 +2397,32 @@
             const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
             keywords.forEach(keyword => {
-              const isExact = keyword.startsWith('=');
-              const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+              // 排除关键词：-关键词 或 !关键词
+              const isNegate = keyword.startsWith('-') || keyword.startsWith('!');
+              const negKeyword = isNegate ? keyword.substring(1) : keyword;
+              const isExact = negKeyword.startsWith('=');
+              const searchTerm = isExact ? negKeyword.substring(1).toLowerCase() : negKeyword.toLowerCase();
 
               filteredProcessData = filteredProcessData.filter(item => {
                 try {
                   // 遍历所有字段进行搜索
                   const values = Object.values(item).map(v => String(v || '').toLowerCase());
-
-                  if (isExact) {
-                    // 精确匹配：任意字段完全等于搜索词
-                    return values.some(v => v === searchTerm);
-                  } else {
-                    // 模糊匹配：任意字段包含搜索词
-                    return values.some(v => v.includes(searchTerm));
-                  }
+                  const match = isExact
+                    ? values.some(v => v === searchTerm)
+                    : values.some(v => v.includes(searchTerm));
+                  // 排除关键词：匹配到的排除；普通关键词：匹配到的保留
+                  return isNegate ? !match : match;
                 } catch (filterError) {
                   console.error('过滤数据时出错:', filterError);
                   return false;
                 }
               });
             });
+          }
+
+          // 过滤完成后再显示型号建议，确保建议来自当前搜索结果
+          if (searchValue) {
+            showModelSuggestions();
           }
 
           currentProcessPage = 1;
@@ -2464,9 +2464,6 @@
 
         // 设置新的定时器，延迟500ms执行查询
         processSearchTimeout = setTimeout(function () {
-          // 先显示型号建议
-          showModelSuggestions();
-          // 然后执行搜索
           searchProcessData();
         }, 500);
       }
@@ -2489,15 +2486,16 @@
             return;
           }
 
-          // 搜索匹配的型号（支持精确匹配和模糊匹配）
+          // 从当前搜索结果中提取产品型号推荐，而不是全量数据
+          // 这样建议只来自符合当前所有搜索条件的记录
+          const dataSource = filteredProcessData && filteredProcessData.length > 0
+            ? filteredProcessData
+            : bearingProcessData;
           const matchingModels = new Set();
-          bearingProcessData.forEach(item => {
+          dataSource.forEach(item => {
             const productModel = item['产品型号'] || '';
             if (productModel) {
-              // 使用通用匹配函数
-              if (matchModel(inputValue, productModel)) {
-                matchingModels.add(productModel);
-              }
+              matchingModels.add(productModel);
             }
           });
 
@@ -2602,17 +2600,18 @@
           const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
           keywords.forEach(keyword => {
-            const isExact = keyword.startsWith('=');
-            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            // 排除关键词：-关键词 或 !关键词
+            const isNegate = keyword.startsWith('-') || keyword.startsWith('!');
+            const negKeyword = isNegate ? keyword.substring(1) : keyword;
+            const isExact = negKeyword.startsWith('=');
+            const searchTerm = isExact ? negKeyword.substring(1).toLowerCase() : negKeyword.toLowerCase();
             matchingRecords = matchingRecords.filter(item => {
-              const productModel = String(item['产品型号'] || '').toLowerCase();
-              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
-              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
-              if (isExact) {
-                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
-              } else {
-                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
-              }
+              // 遍历所有字段进行搜索，与主搜索保持一致
+              const values = Object.values(item).map(v => String(v || '').toLowerCase());
+              const match = isExact
+                ? values.some(v => v === searchTerm)
+                : values.some(v => v.includes(searchTerm));
+              return isNegate ? !match : match;
             });
           });
 
@@ -4527,17 +4526,18 @@
           const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
           keywords.forEach(keyword => {
-            const isExact = keyword.startsWith('=');
-            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            // 排除关键词：-关键词 或 !关键词
+            const isNegate = keyword.startsWith('-') || keyword.startsWith('!');
+            const negKeyword = isNegate ? keyword.substring(1) : keyword;
+            const isExact = negKeyword.startsWith('=');
+            const searchTerm = isExact ? negKeyword.substring(1).toLowerCase() : negKeyword.toLowerCase();
             matchingRecords = matchingRecords.filter(item => {
-              const productModel = String(item['产品型号'] || '').toLowerCase();
-              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
-              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
-              if (isExact) {
-                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
-              } else {
-                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
-              }
+              // 遍历所有字段进行搜索，与主搜索保持一致
+              const values = Object.values(item).map(v => String(v || '').toLowerCase());
+              const match = isExact
+                ? values.some(v => v === searchTerm)
+                : values.some(v => v.includes(searchTerm));
+              return isNegate ? !match : match;
             });
           });
 
@@ -5148,17 +5148,18 @@
           const keywords = searchValue.split(/[+\s]+/).filter(k => k.trim());
 
           keywords.forEach(keyword => {
-            const isExact = keyword.startsWith('=');
-            const searchTerm = isExact ? keyword.substring(1).toLowerCase() : keyword.toLowerCase();
+            // 排除关键词：-关键词 或 !关键词
+            const isNegate = keyword.startsWith('-') || keyword.startsWith('!');
+            const negKeyword = isNegate ? keyword.substring(1) : keyword;
+            const isExact = negKeyword.startsWith('=');
+            const searchTerm = isExact ? negKeyword.substring(1).toLowerCase() : negKeyword.toLowerCase();
             matchingRecords = matchingRecords.filter(item => {
-              const productModel = String(item['产品型号'] || '').toLowerCase();
-              const itemCustomer = String(item['客户名称'] || '').toLowerCase();
-              const itemSalesperson = String(item['销售人员'] || '').toLowerCase();
-              if (isExact) {
-                return productModel === searchTerm || itemCustomer === searchTerm || itemSalesperson === searchTerm;
-              } else {
-                return productModel.includes(searchTerm) || itemCustomer.includes(searchTerm) || itemSalesperson.includes(searchTerm);
-              }
+              // 遍历所有字段进行搜索，与主搜索保持一致
+              const values = Object.values(item).map(v => String(v || '').toLowerCase());
+              const match = isExact
+                ? values.some(v => v === searchTerm)
+                : values.some(v => v.includes(searchTerm));
+              return isNegate ? !match : match;
             });
           });
 
