@@ -15,3 +15,7 @@ build/
 __pycache__/
 *.genie
 .wbapp_*
+
+# 非工作文件（不上传 Gitee）
+update_data.py
+*.xlsx
