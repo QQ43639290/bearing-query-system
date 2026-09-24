@@ -9,10 +9,11 @@
   - 生成 Basic product process data.js 数据文件
   - 更新 bearing-data.js 中的 bearingProcessData 数据
   - HTML文件无需修改，自动加载新数据
+  - 站点发布走 Cloudflare Pages（连接本仓库的 GitHub 远程，push 即自动部署）
 
 示例:
-  python3 update_data.py                                    # 使用默认路径
-  python3 update_data.py /path/to/0-产品工艺管理.xlsx         # 指定Excel文件
+  python3 update_data.py                              # 使用默认Excel
+  python3 update_data.py /path/to/0-产品工艺管理.xlsx  # 指定Excel文件
 """
 
 import pandas as pd
@@ -32,11 +33,20 @@ BEARING_DATA_JS_PATH = 'bearing-data.js'
 # ==============================
 
 
-def get_excel_path():
-    """获取Excel文件路径"""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    return DEFAULT_EXCEL
+def parse_args():
+    """解析命令行参数，返回 excel_path"""
+    excel_path = None
+    for a in sys.argv[1:]:
+        if a in ('-h', '--help'):
+            print(__doc__)
+            sys.exit(0)
+        elif a.startswith('-'):
+            continue  # 忽略其它未知选项
+        elif excel_path is None:
+            excel_path = a
+    if excel_path is None:
+        excel_path = DEFAULT_EXCEL
+    return excel_path
 
 
 def format_decimal_value(value):
@@ -267,7 +277,7 @@ def update_bearing_data_js(records, bearing_data_js_path):
 
 
 def main():
-    excel_path = get_excel_path()
+    excel_path = parse_args()
     
     # 检查文件是否存在
     if not os.path.exists(excel_path):
